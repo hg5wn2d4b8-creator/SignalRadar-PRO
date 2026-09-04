@@ -1,0 +1,1352 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0a0e17">
+<title>SignalRadar PRO v2 — BIST & S&P Professional Scanner</title>
+<style>
+  :root {
+    --bg: #0a0e17;
+    --bg2: #111827;
+    --bg3: #1a2332;
+    --border: #1f2a3c;
+    --text: #e5e7eb;
+    --text2: #9ca3af;
+    --green: #10b981;
+    --red: #ef4444;
+    --blue: #3b82f6;
+    --yellow: #f59e0b;
+    --purple: #8b5cf6;
+    --cyan: #06b6d4;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Inter', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+    font-size: 14px;
+    line-height: 1.45;
+  }
+  .app { display: flex; flex-direction: column; min-height: 100vh; }
+  
+  /* Header */
+  header {
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    padding: 10px 14px;
+    display: flex; align-items: center; justify-content: space-between;
+    position: sticky; top: 0; z-index: 100;
+  }
+  .logo { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 16px; }
+  .logo span { color: var(--cyan); }
+  .market-status { display: flex; gap: 12px; font-size: 12px; color: var(--text2); flex-wrap: wrap; }
+  .market-status .up { color: var(--green); }
+  .market-status .down { color: var(--red); }
+  .regime { padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; }
+  .regime.bull { background: rgba(16,185,129,0.15); color: var(--green); }
+  .regime.bear { background: rgba(239,68,68,0.15); color: var(--red); }
+  .regime.range { background: rgba(156,163,175,0.15); color: var(--text2); }
+  
+  /* Layout */
+  .main { display: flex; flex: 1; overflow: hidden; }
+  .sidebar {
+    width: 260px; background: var(--bg2); border-right: 1px solid var(--border);
+    display: flex; flex-direction: column; overflow: hidden;
+  }
+  .sidebar-header { padding: 12px; border-bottom: 1px solid var(--border); }
+  .sidebar-header input {
+    width: 100%; background: var(--bg3); border: 1px solid var(--border);
+    color: var(--text); padding: 8px 10px; border-radius: 6px; font-size: 13px;
+  }
+  .watchlist { flex: 1; overflow-y: auto; padding: 8px; }
+  .wl-item {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 8px 10px; border-radius: 6px; cursor: pointer; margin-bottom: 2px;
+  }
+  .wl-item:hover, .wl-item.active { background: var(--bg3); }
+  .wl-item .sym { font-weight: 600; font-size: 13px; }
+  .wl-item .name { font-size: 11px; color: var(--text2); }
+  .wl-item .chg { font-size: 12px; font-weight: 600; }
+  .wl-item .chg.up { color: var(--green); }
+  .wl-item .chg.down { color: var(--red); }
+  .remove-btn { opacity: 0.4; font-size: 14px; padding: 0 4px; }
+  .remove-btn:hover { opacity: 1; color: var(--red); }
+  
+  .content { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+  
+  /* Tabs */
+  .tabs {
+    display: flex; gap: 2px; padding: 8px 12px 0; background: var(--bg2);
+    border-bottom: 1px solid var(--border); overflow-x: auto;
+  }
+  .tab {
+    padding: 8px 14px; border-radius: 6px 6px 0 0; cursor: pointer;
+    color: var(--text2); font-weight: 500; font-size: 13px; white-space: nowrap;
+  }
+  .tab.active { background: var(--bg); color: var(--text); border: 1px solid var(--border); border-bottom-color: var(--bg); }
+  
+  .filters { display: flex; gap: 6px; padding: 10px 12px; flex-wrap: wrap; }
+  .filter-btn {
+    padding: 5px 12px; border-radius: 20px; border: 1px solid var(--border);
+    background: transparent; color: var(--text2); font-size: 12px; cursor: pointer;
+  }
+  .filter-btn.active { background: var(--blue); border-color: var(--blue); color: white; }
+  
+  .panel { flex: 1; overflow-y: auto; padding: 12px; display: none; }
+  .panel.active { display: block; }
+  
+  /* Cards */
+  .signal-card {
+    background: var(--bg2); border: 1px solid var(--border); border-radius: 10px;
+    padding: 14px; margin-bottom: 10px; position: relative;
+  }
+  .signal-card.buy { border-left: 4px solid var(--green); }
+  .signal-card.sell { border-left: 4px solid var(--red); }
+  .signal-card.setup { border-left: 4px solid var(--yellow); }
+  .sig-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .sig-sym { font-size: 16px; font-weight: 700; }
+  .sig-badge {
+    padding: 3px 10px; border-radius: 4px; font-size: 11px; font-weight: 700;
+  }
+  .sig-badge.buy { background: rgba(16,185,129,0.2); color: var(--green); }
+  .sig-badge.sell { background: rgba(239,68,68,0.2); color: var(--red); }
+  .sig-badge.setup { background: rgba(245,158,11,0.2); color: var(--yellow); }
+  .score { font-size: 20px; font-weight: 800; }
+  .score.high { color: var(--green); }
+  .score.mid { color: var(--yellow); }
+  .score.low { color: var(--text2); }
+  .reasons { font-size: 12px; color: var(--text2); margin-top: 6px; }
+  .reasons span { display: inline-block; background: var(--bg3); padding: 2px 6px; border-radius: 3px; margin: 2px; }
+  .price-row { display: flex; gap: 16px; margin-top: 8px; font-size: 13px; }
+  .price-row strong { color: var(--text); }
+  
+  /* Empty / Loading */
+  .empty, .loading {
+    text-align: center; padding: 40px 20px; color: var(--text2);
+  }
+  .spinner {
+    width: 32px; height: 32px; border: 3px solid var(--border);
+    border-top-color: var(--cyan); border-radius: 50%;
+    animation: spin 0.8s linear infinite; margin: 0 auto 12px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  
+  /* Backtest specific */
+  .bt-controls {
+    display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+    background: var(--bg2); padding: 12px; border-radius: 8px; margin-bottom: 12px;
+  }
+  .bt-controls select, .bt-controls input, .bt-controls button {
+    background: var(--bg3); border: 1px solid var(--border); color: var(--text);
+    padding: 7px 10px; border-radius: 6px; font-size: 13px;
+  }
+  .bt-controls button {
+    background: var(--blue); border: none; cursor: pointer; font-weight: 600;
+  }
+  .bt-controls button:disabled { opacity: 0.5; cursor: not-allowed; }
+  .bt-stats {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+    gap: 8px; margin-bottom: 14px;
+  }
+  .stat-box {
+    background: var(--bg2); border: 1px solid var(--border); border-radius: 8px;
+    padding: 10px; text-align: center;
+  }
+  .stat-box .val { font-size: 18px; font-weight: 700; }
+  .stat-box .lbl { font-size: 11px; color: var(--text2); margin-top: 2px; }
+  
+  /* Replay */
+  .replay-box {
+    background: var(--bg2); border: 1px solid var(--border); border-radius: 10px;
+    padding: 14px; margin-bottom: 14px;
+  }
+  .replay-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .replay-slider { width: 100%; margin: 10px 0; }
+  .replay-info { font-size: 13px; color: var(--text2); }
+  .chart-container {
+    height: 220px; background: var(--bg3); border-radius: 8px;
+    position: relative; overflow: hidden; margin-bottom: 10px;
+  }
+  canvas { width: 100%; height: 100%; display: block; }
+  
+  .signal-log { max-height: 320px; overflow-y: auto; }
+  .sig-log-item {
+    display: flex; justify-content: space-between; padding: 8px 10px;
+    border-bottom: 1px solid var(--border); font-size: 12px;
+  }
+  .sig-log-item.win { background: rgba(16,185,129,0.08); }
+  .sig-log-item.loss { background: rgba(239,68,68,0.08); }
+  
+  /* Risk */
+  .risk-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .risk-card {
+    background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 14px;
+  }
+  .risk-card h3 { font-size: 14px; margin-bottom: 10px; color: var(--cyan); }
+  .risk-card label { display: block; font-size: 12px; color: var(--text2); margin-bottom: 4px; }
+  .risk-card input {
+    width: 100%; background: var(--bg3); border: 1px solid var(--border);
+    color: var(--text); padding: 8px; border-radius: 6px; margin-bottom: 10px;
+  }
+  .result-box {
+    background: var(--bg3); padding: 10px; border-radius: 6px; margin-top: 8px;
+    font-size: 13px;
+  }
+  
+  /* Analiz */
+  .tf-tabs { display: flex; gap: 6px; margin-bottom: 12px; }
+  .tf-btn {
+    padding: 5px 12px; border-radius: 6px; border: 1px solid var(--border);
+    background: transparent; color: var(--text2); font-size: 12px; cursor: pointer;
+  }
+  .tf-btn.active { background: var(--purple); border-color: var(--purple); color: white; }
+  
+  /* Mobile */
+  @media (max-width: 768px) {
+    .main { flex-direction: column; }
+    .sidebar {
+      width: 100%; max-height: 180px; border-right: none;
+      border-bottom: 1px solid var(--border);
+    }
+    .risk-grid { grid-template-columns: 1fr; }
+    .market-status { font-size: 11px; gap: 8px; }
+  }
+  
+  .btn-primary {
+    background: var(--blue); color: white; border: none; padding: 8px 16px;
+    border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 13px;
+  }
+  .btn-primary:hover { filter: brightness(1.1); }
+  .btn-sm { padding: 5px 10px; font-size: 12px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="logo">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#06b6d4" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+      SignalRadar <span>PRO</span>
+    </div>
+    <div class="market-status" id="marketStatus">
+      <span>Yükleniyor...</span>
+    </div>
+  </header>
+  
+  <div class="main">
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <input type="text" id="addSymbol" placeholder="Sembol ekle (THYAO.IS / AAPL)" onkeydown="if(event.key==='Enter')addToWatchlist()">
+      </div>
+      <div class="watchlist" id="watchlist"></div>
+    </aside>
+    
+    <div class="content">
+      <div class="tabs">
+        <div class="tab active" data-tab="radar">Radar</div>
+        <div class="tab" data-tab="analiz">Analiz</div>
+        <div class="tab" data-tab="backtest">Backtest + Replay</div>
+        <div class="tab" data-tab="risk">Risk</div>
+      </div>
+      
+      <div class="filters" id="filters">
+        <button class="filter-btn active" data-filter="watch">İzleme Listesi</button>
+        <button class="filter-btn" data-filter="bist30">BIST 30</button>
+        <button class="filter-btn" data-filter="bist100">BIST 100</button>
+        <button class="filter-btn" data-filter="sp500">S&P Likit</button>
+        <button class="filter-btn" data-filter="scan">Fırsat Tarama</button>
+      </div>
+      
+      <!-- RADAR -->
+      <div class="panel active" id="panel-radar">
+        <div id="radarContent" class="loading"><div class="spinner"></div>Sinyaller taranıyor...</div>
+      </div>
+      
+      <!-- ANALIZ -->
+      <div class="panel" id="panel-analiz">
+        <div class="tf-tabs">
+          <button class="tf-btn active" data-tf="15m">15dk</button>
+          <button class="tf-btn" data-tf="1h">1saat</button>
+          <button class="tf-btn" data-tf="1d">Günlük</button>
+          <button class="tf-btn" data-tf="1wk">Haftalık</button>
+        </div>
+        <div id="analizContent" class="empty">Sol taraftan bir hisse seçin veya Radar'dan tıklayın.</div>
+      </div>
+      
+      <!-- BACKTEST + REPLAY -->
+      <div class="panel" id="panel-backtest">
+        <div class="bt-controls">
+          <select id="btSymbol"></select>
+          <select id="btInterval">
+            <option value="1d">Günlük</option>
+            <option value="1h">1 Saat</option>
+            <option value="1wk">Haftalık</option>
+          </select>
+          <select id="btRange">
+            <option value="6mo">6 Ay</option>
+            <option value="1y" selected>1 Yıl</option>
+            <option value="2y">2 Yıl</option>
+          </select>
+          <button class="btn-primary" onclick="runBacktest()">Backtest Çalıştır</button>
+        </div>
+        
+        <div class="bt-stats" id="btStats" style="display:none;"></div>
+        
+        <div class="replay-box" id="replayBox" style="display:none;">
+          <div class="replay-header">
+            <strong>Bar Replay (TradingView tarzı)</strong>
+            <div>
+              <button class="btn-primary btn-sm" id="replayPlay" onclick="toggleReplay()">▶ Play</button>
+              <button class="btn-primary btn-sm" onclick="stepReplay(-1)">◀</button>
+              <button class="btn-primary btn-sm" onclick="stepReplay(1)">▶</button>
+            </div>
+          </div>
+          <input type="range" class="replay-slider" id="replaySlider" min="0" max="100" value="0" oninput="onReplaySlide(this.value)">
+          <div class="replay-info" id="replayInfo">Hazır</div>
+          <div class="chart-container">
+            <canvas id="replayCanvas"></canvas>
+          </div>
+          <div class="signal-log" id="signalLog"></div>
+        </div>
+        
+        <div id="btEmpty" class="empty">Sembol seçip "Backtest Çalıştır" butonuna basın. Sistem tarihsel veride aynı confluence mantığını çalıştırır, sinyalleri işaretler ve P/L hesaplar. Replay ile bar bar geri sarabilirsiniz.</div>
+      </div>
+      
+      <!-- RISK -->
+      <div class="panel" id="panel-risk">
+        <div class="risk-grid">
+          <div class="risk-card">
+            <h3>Position Size Hesaplayıcı</h3>
+            <label>Hesap Bakiyesi (₺ / $)</label>
+            <input type="number" id="riskCapital" value="100000" step="1000">
+            <label>Risk % (işlem başına)</label>
+            <input type="number" id="riskPct" value="1" step="0.1" min="0.1" max="5">
+            <label>Giriş Fiyatı</label>
+            <input type="number" id="riskEntry" value="100" step="0.01">
+            <label>Stop Loss Fiyatı</label>
+            <input type="number" id="riskSL" value="95" step="0.01">
+            <button class="btn-primary" onclick="calcPosition()" style="width:100%">Hesapla</button>
+            <div class="result-box" id="posResult">Sonuç burada görünecek</div>
+          </div>
+          <div class="risk-card">
+            <h3>ATR Bazlı Stop & Target</h3>
+            <label>Sembol</label>
+            <input type="text" id="atrSymbol" placeholder="THYAO.IS veya AAPL">
+            <label>Risk/Reward oranı (varsayılan 1:2)</label>
+            <input type="number" id="rrRatio" value="2" step="0.5" min="1">
+            <button class="btn-primary" onclick="calcATRStops()" style="width:100%">ATR Hesapla</button>
+            <div class="result-box" id="atrResult">Sembol girip hesaplayın</div>
+          </div>
+        </div>
+        <div class="risk-card" style="margin-top:12px;">
+          <h3>Profesyonel Risk Kuralları (v2)</h3>
+          <ul style="font-size:13px; color:var(--text2); padding-left:18px; line-height:1.7;">
+            <li>Tek işlemde max %1-1.5 risk</li>
+            <li>Günlük max kayıp limiti: hesap %3</li>
+            <li>Aynı sektörde max 2 pozisyon</li>
+            <li>Sinyal skoru &lt; 70 ise işlem açma</li>
+            <li>Yüksek TF (günlük/haftalık) bias ile çelişen sinyali reddet</li>
+            <li>Volatilite (ATR) artınca position size küçült</li>
+            <li>Ardışık 3 kayıp sonrası 1 gün ara ver</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===================== CONFIG & LISTS =====================
+const CORS = 'https://corsproxy.io/?';
+const YAHOO = 'https://query1.finance.yahoo.com/v8/finance/chart/';
+
+const BIST30 = [
+  {s:'THYAO.IS', n:'Türk Hava Yolları'}, {s:'GARAN.IS', n:'Garanti BBVA'},
+  {s:'ASELS.IS', n:'Aselsan'}, {s:'KCHOL.IS', n:'Koç Holding'},
+  {s:'SISE.IS', n:'Şişecam'}, {s:'BIMAS.IS', n:'BİM'},
+  {s:'AKBNK.IS', n:'Akbank'}, {s:'EREGL.IS', n:'Ereğli Demir'},
+  {s:'TUPRS.IS', n:'Tüpraş'}, {s:'FROTO.IS', n:'Ford Otosan'},
+  {s:'SAHOL.IS', n:'Sabancı'}, {s:'TCELL.IS', n:'Turkcell'},
+  {s:'YKBNK.IS', n:'Yapı Kredi'}, {s:'ISCTR.IS', n:'İş Bankası'},
+  {s:'HEKTS.IS', n:'Hektaş'}, {s:'TOASO.IS', n:'Tofaş'},
+  {s:'PGSUS.IS', n:'Pegasus'}, {s:'ENKAI.IS', n:'Enka'},
+  {s:'KOZAL.IS', n:'Koza Altın'}, {s:'SASA.IS', n:'Sasa'},
+  {s:'PETKM.IS', n:'Petkim'}, {s:'TAVHL.IS', n:'TAV'},
+  {s:'ULKER.IS', n:'Ülker'}, {s:'CCOLA.IS', n:'Coca-Cola'},
+  {s:'MGROS.IS', n:'Migros'}, {s:'DOHOL.IS', n:'Doğan Holding'},
+  {s:'ARCLK.IS', n:'Arçelik'}, {s:'ALARK.IS', n:'Alarko'},
+  {s:'EKGYO.IS', n:'Emlak Konut'}, {s:'GUBRF.IS', n:'Gübre Fabrikaları'}
+];
+
+const BIST100_EXTRA = [
+  {s:'ASTOR.IS', n:'Astor'}, {s:'OYAKC.IS', n:'Oyak Çimento'},
+  {s:'KRDMD.IS', n:'Kardemir'}, {s:'BRSAN.IS', n:'Borusan'},
+  {s:'CIMSA.IS', n:'Çimsa'}, {s:'AEFES.IS', n:'Anadolu Efes'},
+  {s:'VESBE.IS', n:'Vestel Beyaz'}, {s:'VESTL.IS', n:'Vestel'},
+  {s:'SOKM.IS', n:'Şok Market'}, {s:'MAVI.IS', n:'Mavi'},
+  {s:'TMSN.IS', n:'Tümosan'}, {s:'GESAN.IS', n:'Girişim'},
+  {s:'ENJSA.IS', n:'Enerjisa'}, {s:'AKSEN.IS', n:'Aksa Enerji'},
+  {s:'ZOREN.IS', n:'Zorlu Enerji'}
+];
+
+const SP500_LIQUID = [
+  {s:'AAPL', n:'Apple'}, {s:'MSFT', n:'Microsoft'}, {s:'NVDA', n:'NVIDIA'},
+  {s:'META', n:'Meta'}, {s:'GOOGL', n:'Alphabet'}, {s:'AMZN', n:'Amazon'},
+  {s:'TSLA', n:'Tesla'}, {s:'BRK-B', n:'Berkshire'}, {s:'JPM', n:'JPMorgan'},
+  {s:'V', n:'Visa'}, {s:'UNH', n:'UnitedHealth'}, {s:'XOM', n:'Exxon'},
+  {s:'LLY', n:'Eli Lilly'}, {s:'AVGO', n:'Broadcom'}, {s:'MA', n:'Mastercard'},
+  {s:'COST', n:'Costco'}, {s:'HD', n:'Home Depot'}, {s:'PG', n:'Procter'},
+  {s:'JNJ', n:'Johnson'}, {s:'ABBV', n:'AbbVie'}, {s:'CRM', n:'Salesforce'},
+  {s:'AMD', n:'AMD'}, {s:'NFLX', n:'Netflix'}, {s:'KO', n:'Coca-Cola'},
+  {s:'PEP', n:'Pepsi'}, {s:'ADBE', n:'Adobe'}, {s:'WMT', n:'Walmart'},
+  {s:'BAC', n:'Bank of America'}, {s:'CSCO', n:'Cisco'}, {s:'DIS', n:'Disney'}
+];
+
+let watchlist = JSON.parse(localStorage.getItem('sr_watch') || 'null') || [
+  {s:'THYAO.IS', n:'Türk Hava Yolları'}, {s:'GARAN.IS', n:'Garanti BBVA'},
+  {s:'ASELS.IS', n:'Aselsan'}, {s:'KCHOL.IS', n:'Koç Holding'},
+  {s:'SISE.IS', n:'Şişecam'}, {s:'AAPL', n:'Apple'}, {s:'NVDA', n:'NVIDIA'},
+  {s:'META', n:'Meta'}
+];
+
+let currentFilter = 'watch';
+let currentTF = '1d';
+let selectedSymbol = null;
+let marketRegime = 'range';
+let priceCache = {};
+let histCache = {};
+
+// ===================== DATA FETCH =====================
+async function fetchChart(symbol, interval = '1d', range = '3mo') {
+  const key = `${symbol}_${interval}_${range}`;
+  if (histCache[key] && Date.now() - histCache[key].ts < 60000) return histCache[key].data;
+  
+  const url = `${YAHOO}${encodeURIComponent(symbol)}?interval=${interval}&range=${range}&includePrePost=false`;
+  try {
+    const res = await fetch(CORS + encodeURIComponent(url), { headers: { 'Accept': 'application/json' } });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const json = await res.json();
+    const result = json.chart?.result?.[0];
+    if (!result) throw new Error('No data');
+    
+    const ts = result.timestamp || [];
+    const q = result.indicators.quote[0];
+    const meta = result.meta;
+    
+    const bars = ts.map((t, i) => ({
+      t: t * 1000,
+      o: q.open[i],
+      h: q.high[i],
+      l: q.low[i],
+      c: q.close[i],
+      v: q.volume[i] || 0
+    })).filter(b => b.c != null && !isNaN(b.c));
+    
+    const data = { bars, meta, symbol };
+    histCache[key] = { data, ts: Date.now() };
+    return data;
+  } catch (e) {
+    console.warn('Fetch fail', symbol, e);
+    return null;
+  }
+}
+
+async function fetchQuote(symbol) {
+  const data = await fetchChart(symbol, '1d', '5d');
+  if (!data || !data.bars.length) return null;
+  const last = data.bars[data.bars.length - 1];
+  const prev = data.bars[data.bars.length - 2] || last;
+  return {
+    symbol,
+    price: last.c,
+    change: last.c - prev.c,
+    changePct: ((last.c - prev.c) / prev.c) * 100,
+    volume: last.v,
+    high: last.h,
+    low: last.l
+  };
+}
+
+// ===================== INDICATORS =====================
+function ema(arr, period) {
+  const k = 2 / (period + 1);
+  const out = [];
+  let prev = arr.slice(0, period).reduce((a, b) => a + b, 0) / period;
+  for (let i = 0; i < arr.length; i++) {
+    if (i < period - 1) { out.push(null); continue; }
+    if (i === period - 1) { out.push(prev); continue; }
+    prev = arr[i] * k + prev * (1 - k);
+    out.push(prev);
+  }
+  return out;
+}
+
+function sma(arr, period) {
+  const out = [];
+  for (let i = 0; i < arr.length; i++) {
+    if (i < period - 1) { out.push(null); continue; }
+    const slice = arr.slice(i - period + 1, i + 1);
+    out.push(slice.reduce((a, b) => a + b, 0) / period);
+  }
+  return out;
+}
+
+function rsi(closes, period = 14) {
+  const out = [];
+  let gains = 0, losses = 0;
+  for (let i = 1; i <= period; i++) {
+    const d = closes[i] - closes[i - 1];
+    if (d >= 0) gains += d; else losses -= d;
+  }
+  let avgGain = gains / period, avgLoss = losses / period;
+  out[period] = avgLoss === 0 ? 100 : 100 - (100 / (1 + avgGain / avgLoss));
+  
+  for (let i = period + 1; i < closes.length; i++) {
+    const d = closes[i] - closes[i - 1];
+    const g = d > 0 ? d : 0;
+    const l = d < 0 ? -d : 0;
+    avgGain = (avgGain * (period - 1) + g) / period;
+    avgLoss = (avgLoss * (period - 1) + l) / period;
+    out[i] = avgLoss === 0 ? 100 : 100 - (100 / (1 + avgGain / avgLoss));
+  }
+  for (let i = 0; i < period; i++) out[i] = null;
+  return out;
+}
+
+function macd(closes, fast = 12, slow = 26, signal = 9) {
+  const emaFast = ema(closes, fast);
+  const emaSlow = ema(closes, slow);
+  const macdLine = closes.map((_, i) => (emaFast[i] != null && emaSlow[i] != null) ? emaFast[i] - emaSlow[i] : null);
+  const signalLine = ema(macdLine.map(v => v == null ? 0 : v), signal);
+  const hist = macdLine.map((v, i) => (v != null && signalLine[i] != null) ? v - signalLine[i] : null);
+  return { macd: macdLine, signal: signalLine, hist };
+}
+
+function bollinger(closes, period = 20, mult = 2) {
+  const mid = sma(closes, period);
+  const upper = [], lower = [];
+  for (let i = 0; i < closes.length; i++) {
+    if (i < period - 1) { upper.push(null); lower.push(null); continue; }
+    const slice = closes.slice(i - period + 1, i + 1);
+    const mean = mid[i];
+    const variance = slice.reduce((a, b) => a + (b - mean) ** 2, 0) / period;
+    const std = Math.sqrt(variance);
+    upper.push(mean + mult * std);
+    lower.push(mean - mult * std);
+  }
+  return { mid, upper, lower };
+}
+
+function stochastic(highs, lows, closes, kPeriod = 14, dPeriod = 3) {
+  const k = [];
+  for (let i = 0; i < closes.length; i++) {
+    if (i < kPeriod - 1) { k.push(null); continue; }
+    const hh = Math.max(...highs.slice(i - kPeriod + 1, i + 1));
+    const ll = Math.min(...lows.slice(i - kPeriod + 1, i + 1));
+    k.push(hh === ll ? 50 : ((closes[i] - ll) / (hh - ll)) * 100);
+  }
+  const d = sma(k.map(v => v == null ? 50 : v), dPeriod);
+  return { k, d };
+}
+
+function atr(highs, lows, closes, period = 14) {
+  const tr = [];
+  for (let i = 0; i < closes.length; i++) {
+    if (i === 0) { tr.push(highs[i] - lows[i]); continue; }
+    tr.push(Math.max(highs[i] - lows[i], Math.abs(highs[i] - closes[i - 1]), Math.abs(lows[i] - closes[i - 1])));
+  }
+  return sma(tr, period);
+}
+
+function adx(highs, lows, closes, period = 14) {
+  // Simplified ADX
+  const plusDM = [], minusDM = [], tr = [];
+  for (let i = 1; i < closes.length; i++) {
+    const up = highs[i] - highs[i - 1];
+    const down = lows[i - 1] - lows[i];
+    plusDM.push(up > down && up > 0 ? up : 0);
+    minusDM.push(down > up && down > 0 ? down : 0);
+    tr.push(Math.max(highs[i] - lows[i], Math.abs(highs[i] - closes[i - 1]), Math.abs(lows[i] - closes[i - 1])));
+  }
+  const atrArr = sma(tr, period);
+  const plusDI = [], minusDI = [], dx = [];
+  let smoothPlus = 0, smoothMinus = 0, smoothTR = 0;
+  for (let i = 0; i < period; i++) {
+    smoothPlus += plusDM[i] || 0;
+    smoothMinus += minusDM[i] || 0;
+    smoothTR += tr[i] || 0;
+  }
+  for (let i = 0; i < closes.length; i++) {
+    if (i < period) { plusDI.push(null); minusDI.push(null); dx.push(null); continue; }
+    if (i === period) {
+      const pdi = smoothTR ? (100 * smoothPlus / smoothTR) : 0;
+      const mdi = smoothTR ? (100 * smoothMinus / smoothTR) : 0;
+      plusDI.push(pdi); minusDI.push(mdi);
+      dx.push(pdi + mdi ? 100 * Math.abs(pdi - mdi) / (pdi + mdi) : 0);
+      continue;
+    }
+    smoothPlus = smoothPlus - smoothPlus / period + (plusDM[i - 1] || 0);
+    smoothMinus = smoothMinus - smoothMinus / period + (minusDM[i - 1] || 0);
+    smoothTR = smoothTR - smoothTR / period + (tr[i - 1] || 0);
+    const pdi = smoothTR ? (100 * smoothPlus / smoothTR) : 0;
+    const mdi = smoothTR ? (100 * smoothMinus / smoothTR) : 0;
+    plusDI.push(pdi); minusDI.push(mdi);
+    dx.push(pdi + mdi ? 100 * Math.abs(pdi - mdi) / (pdi + mdi) : 0);
+  }
+  const adxLine = sma(dx.map(v => v == null ? 0 : v), period);
+  return { adx: adxLine, plusDI, minusDI };
+}
+
+// ===================== SIGNAL ENGINE (Professional Confluence) =====================
+function analyzeBars(bars, higherBars = null) {
+  if (!bars || bars.length < 60) return null;
+  
+  const closes = bars.map(b => b.c);
+  const highs = bars.map(b => b.h);
+  const lows = bars.map(b => b.l);
+  const vols = bars.map(b => b.v);
+  const n = closes.length - 1;
+  
+  const ema9 = ema(closes, 9);
+  const ema21 = ema(closes, 21);
+  const ema50 = ema(closes, 50);
+  const ema200 = ema(closes, 200);
+  const rsi14 = rsi(closes, 14);
+  const macdData = macd(closes);
+  const bb = bollinger(closes, 20, 2);
+  const stoch = stochastic(highs, lows, closes, 14, 3);
+  const atr14 = atr(highs, lows, closes, 14);
+  const adxData = adx(highs, lows, closes, 14);
+  const volSma = sma(vols, 20);
+  
+  const price = closes[n];
+  const reasons = [];
+  let score = 50; // neutral start
+  let direction = 0; // +1 buy, -1 sell
+  
+  // 1. Trend / EMA structure (high weight)
+  if (ema9[n] && ema21[n] && ema50[n]) {
+    if (price > ema9[n] && ema9[n] > ema21[n] && ema21[n] > ema50[n]) {
+      score += 12; direction += 1; reasons.push('EMA bullish stack');
+    } else if (price < ema9[n] && ema9[n] < ema21[n] && ema21[n] < ema50[n]) {
+      score += 12; direction -= 1; reasons.push('EMA bearish stack');
+    }
+    if (ema200[n]) {
+      if (price > ema200[n]) { score += 6; direction += 0.5; reasons.push('Above EMA200'); }
+      else { score += 6; direction -= 0.5; reasons.push('Below EMA200'); }
+    }
+  }
+  
+  // 2. MACD
+  if (macdData.hist[n] != null && macdData.hist[n - 1] != null) {
+    if (macdData.hist[n] > 0 && macdData.hist[n - 1] <= 0) {
+      score += 10; direction += 1; reasons.push('MACD hist cross ↑');
+    } else if (macdData.hist[n] < 0 && macdData.hist[n - 1] >= 0) {
+      score += 10; direction -= 1; reasons.push('MACD hist cross ↓');
+    } else if (macdData.hist[n] > macdData.hist[n - 1] && macdData.hist[n] > 0) {
+      score += 5; direction += 0.5; reasons.push('MACD hist rising');
+    } else if (macdData.hist[n] < macdData.hist[n - 1] && macdData.hist[n] < 0) {
+      score += 5; direction -= 0.5; reasons.push('MACD hist falling');
+    }
+  }
+  
+  // 3. RSI
+  if (rsi14[n] != null) {
+    if (rsi14[n] < 30) { score += 9; direction += 1; reasons.push(`RSI oversold ${rsi14[n].toFixed(0)}`); }
+    else if (rsi14[n] > 70) { score += 9; direction -= 1; reasons.push(`RSI overbought ${rsi14[n].toFixed(0)}`); }
+    else if (rsi14[n] > 50 && rsi14[n] < 65) { score += 3; direction += 0.3; reasons.push('RSI bullish zone'); }
+    else if (rsi14[n] < 50 && rsi14[n] > 35) { score += 3; direction -= 0.3; reasons.push('RSI bearish zone'); }
+  }
+  
+  // 4. Stochastic
+  if (stoch.k[n] != null && stoch.d[n] != null) {
+    if (stoch.k[n] < 20 && stoch.k[n] > stoch.d[n]) {
+      score += 7; direction += 1; reasons.push('Stoch oversold cross ↑');
+    } else if (stoch.k[n] > 80 && stoch.k[n] < stoch.d[n]) {
+      score += 7; direction -= 1; reasons.push('Stoch overbought cross ↓');
+    }
+  }
+  
+  // 5. Bollinger
+  if (bb.lower[n] != null) {
+    if (price <= bb.lower[n] * 1.005) { score += 8; direction += 1; reasons.push('BB lower touch'); }
+    else if (price >= bb.upper[n] * 0.995) { score += 8; direction -= 1; reasons.push('BB upper touch'); }
+    // Squeeze breakout
+    const bw = (bb.upper[n] - bb.lower[n]) / bb.mid[n];
+    if (bw < 0.04 && price > bb.mid[n]) { score += 5; direction += 0.5; reasons.push('BB squeeze break ↑'); }
+    else if (bw < 0.04 && price < bb.mid[n]) { score += 5; direction -= 0.5; reasons.push('BB squeeze break ↓'); }
+  }
+  
+  // 6. Volume
+  if (volSma[n] && vols[n] > volSma[n] * 1.5) {
+    score += 6; reasons.push(`Hacim +${((vols[n]/volSma[n]-1)*100).toFixed(0)}%`);
+    // Volume confirms direction
+    if (closes[n] > closes[n-1]) direction += 0.4;
+    else direction -= 0.4;
+  }
+  
+  // 7. ADX trend strength
+  if (adxData.adx[n] != null) {
+    if (adxData.adx[n] > 25) {
+      score += 5; reasons.push(`ADX ${adxData.adx[n].toFixed(0)} güçlü trend`);
+      if (adxData.plusDI[n] > adxData.minusDI[n]) direction += 0.4;
+      else direction -= 0.4;
+    } else if (adxData.adx[n] < 18) {
+      score -= 4; reasons.push('ADX zayıf (range)');
+    }
+  }
+  
+  // 8. Higher timeframe bias (if provided)
+  if (higherBars && higherBars.length > 50) {
+    const hCloses = higherBars.map(b => b.c);
+    const hEma50 = ema(hCloses, 50);
+    const hEma200 = ema(hCloses, 200);
+    const hn = hCloses.length - 1;
+    if (hEma50[hn] && hEma200[hn]) {
+      if (hCloses[hn] > hEma50[hn] && hEma50[hn] > hEma200[hn]) {
+        if (direction > 0) { score += 8; reasons.push('HTF bullish bias'); }
+        else { score -= 6; reasons.push('HTF çelişki (bull)'); }
+      } else if (hCloses[hn] < hEma50[hn] && hEma50[hn] < hEma200[hn]) {
+        if (direction < 0) { score += 8; reasons.push('HTF bearish bias'); }
+        else { score -= 6; reasons.push('HTF çelişki (bear)'); }
+      }
+    }
+  }
+  
+  // Normalize score 0-100
+  score = Math.max(0, Math.min(100, Math.round(score)));
+  
+  let signal = 'none';
+  if (score >= 72 && direction >= 1.5) signal = 'buy';
+  else if (score >= 72 && direction <= -1.5) signal = 'sell';
+  else if (score >= 58 && Math.abs(direction) >= 1) signal = 'setup';
+  
+  // Suggested stops
+  const atrVal = atr14[n] || price * 0.02;
+  const sl = signal === 'buy' ? price - atrVal * 1.5 : (signal === 'sell' ? price + atrVal * 1.5 : null);
+  const tp = signal === 'buy' ? price + atrVal * 3 : (signal === 'sell' ? price - atrVal * 3 : null);
+  
+  return {
+    signal, score, direction, reasons, price,
+    rsi: rsi14[n], macdHist: macdData.hist[n],
+    atr: atrVal, sl, tp,
+    ema9: ema9[n], ema21: ema21[n], ema50: ema50[n],
+    adx: adxData.adx[n],
+    bars: bars.slice(-80) // keep recent for chart
+  };
+}
+
+// ===================== UI HELPERS =====================
+function saveWatchlist() {
+  localStorage.setItem('sr_watch', JSON.stringify(watchlist));
+}
+
+function renderWatchlist() {
+  const el = document.getElementById('watchlist');
+  el.innerHTML = watchlist.map((w, i) => `
+    <div class="wl-item ${selectedSymbol === w.s ? 'active' : ''}" onclick="selectSymbol('${w.s}')">
+      <div>
+        <div class="sym">${w.s.replace('.IS','')}</div>
+        <div class="name">${w.n}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px">
+        <span class="chg" id="chg-${w.s.replace(/[^a-zA-Z0-9]/g,'')}">—</span>
+        <span class="remove-btn" onclick="event.stopPropagation();removeWatch(${i})">×</span>
+      </div>
+    </div>
+  `).join('');
+}
+
+function addToWatchlist() {
+  const input = document.getElementById('addSymbol');
+  let sym = input.value.trim().toUpperCase();
+  if (!sym) return;
+  if (!sym.includes('.') && !SP500_LIQUID.find(x => x.s === sym)) {
+    // assume BIST
+    if (!sym.endsWith('.IS')) sym += '.IS';
+  }
+  if (watchlist.find(w => w.s === sym)) { input.value = ''; return; }
+  const known = [...BIST30, ...BIST100_EXTRA, ...SP500_LIQUID].find(x => x.s === sym);
+  watchlist.push({ s: sym, n: known ? known.n : sym });
+  saveWatchlist();
+  renderWatchlist();
+  input.value = '';
+  updateWatchQuotes();
+}
+
+function removeWatch(i) {
+  watchlist.splice(i, 1);
+  saveWatchlist();
+  renderWatchlist();
+}
+
+function selectSymbol(sym) {
+  selectedSymbol = sym;
+  renderWatchlist();
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelector('[data-tab="analiz"]').classList.add('active');
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('panel-analiz').classList.add('active');
+  loadAnaliz(sym);
+}
+
+// ===================== MARKET STATUS =====================
+async function updateMarketStatus() {
+  const [spy, xu] = await Promise.all([
+    fetchQuote('SPY'),
+    fetchQuote('XU100.IS')
+  ]);
+  let html = '';
+  if (spy) {
+    const cls = spy.changePct >= 0 ? 'up' : 'down';
+    html += `<span class="${cls}">SPY ${spy.changePct >= 0 ? '+' : ''}${spy.changePct.toFixed(2)}%</span>`;
+  }
+  if (xu) {
+    const cls = xu.changePct >= 0 ? 'up' : 'down';
+    html += `<span class="${cls}">XU100 ${xu.changePct >= 0 ? '+' : ''}${xu.changePct.toFixed(2)}%</span>`;
+  }
+  
+  // Simple regime
+  if (spy && xu) {
+    const avg = (spy.changePct + xu.changePct) / 2;
+    if (avg > 0.4) { marketRegime = 'bull'; html += `<span class="regime bull">Bull</span>`; }
+    else if (avg < -0.4) { marketRegime = 'bear'; html += `<span class="regime bear">Bear</span>`; }
+    else { marketRegime = 'range'; html += `<span class="regime range">Nötr</span>`; }
+  }
+  document.getElementById('marketStatus').innerHTML = html || 'Veri yok';
+}
+
+async function updateWatchQuotes() {
+  for (const w of watchlist) {
+    const q = await fetchQuote(w.s);
+    const el = document.getElementById('chg-' + w.s.replace(/[^a-zA-Z0-9]/g, ''));
+    if (el && q) {
+      el.textContent = (q.changePct >= 0 ? '+' : '') + q.changePct.toFixed(2) + '%';
+      el.className = 'chg ' + (q.changePct >= 0 ? 'up' : 'down');
+    }
+  }
+}
+
+// ===================== RADAR SCAN =====================
+async function runRadar() {
+  const content = document.getElementById('radarContent');
+  content.innerHTML = '<div class="loading"><div class="spinner"></div>Profesyonel tarama yapılıyor (multi-TF confluence)...</div>';
+  
+  let list = [];
+  if (currentFilter === 'watch') list = watchlist;
+  else if (currentFilter === 'bist30') list = BIST30;
+  else if (currentFilter === 'bist100') list = [...BIST30, ...BIST100_EXTRA];
+  else if (currentFilter === 'sp500') list = SP500_LIQUID;
+  else list = [...watchlist, ...BIST30.slice(0, 15), ...SP500_LIQUID.slice(0, 12)];
+  
+  // unique
+  const seen = new Set();
+  list = list.filter(x => { if (seen.has(x.s)) return false; seen.add(x.s); return true; });
+  
+  const results = [];
+  // Limit concurrent to avoid rate limit
+  const batchSize = 4;
+  for (let i = 0; i < list.length; i += batchSize) {
+    const batch = list.slice(i, i + batchSize);
+    const promises = batch.map(async (item) => {
+      try {
+        const [daily, hourly] = await Promise.all([
+          fetchChart(item.s, '1d', '6mo'),
+          fetchChart(item.s, '1h', '1mo')
+        ]);
+        if (!daily || !daily.bars.length) return null;
+        const analysis = analyzeBars(daily.bars, null);
+        // Also check hourly for entry timing
+        let hAnalysis = null;
+        if (hourly && hourly.bars.length > 50) {
+          hAnalysis = analyzeBars(hourly.bars, daily.bars);
+        }
+        return { item, analysis, hAnalysis, daily };
+      } catch (e) { return null; }
+    });
+    const batchRes = await Promise.all(promises);
+    results.push(...batchRes.filter(Boolean));
+    // small delay
+    await new Promise(r => setTimeout(r, 300));
+  }
+  
+  // Sort by score desc, prefer actionable
+  results.sort((a, b) => {
+    const sa = a.analysis?.score || 0;
+    const sb = b.analysis?.score || 0;
+    return sb - sa;
+  });
+  
+  const signals = results.filter(r => r.analysis && r.analysis.signal !== 'none');
+  const setups = results.filter(r => r.analysis && r.analysis.signal === 'setup');
+  const strong = results.filter(r => r.analysis && (r.analysis.signal === 'buy' || r.analysis.signal === 'sell'));
+  
+  let html = '';
+  if (strong.length === 0 && setups.length === 0) {
+    html = `<div class="empty">
+      <p style="font-size:15px;margin-bottom:8px">Şu an yüksek confluence sinyal yok.</p>
+      <p style="font-size:13px">Bu bir karardır — zorla işlem açma. ${results.length} sembol tarandı.<br>
+      Rejim: <strong>${marketRegime}</strong>. Sadece skor ≥ 72 + yön teyidi olanlar gösterilir.</p>
+    </div>`;
+  } else {
+    if (strong.length) {
+      html += `<div style="margin-bottom:8px;font-size:12px;color:var(--text2)">${strong.length} güçlü sinyal • ${setups.length} gelişen kurulum</div>`;
+      strong.forEach(r => { html += renderSignalCard(r); });
+    }
+    if (setups.length) {
+      html += `<div style="margin:16px 0 8px;font-size:13px;color:var(--yellow)">Gelişen Kurulumlar (skor 58-71)</div>`;
+      setups.slice(0, 8).forEach(r => { html += renderSignalCard(r); });
+    }
+  }
+  content.innerHTML = html;
+}
+
+function renderSignalCard(r) {
+  const a = r.analysis;
+  const h = r.hAnalysis;
+  const sig = a.signal;
+  const badge = sig === 'buy' ? 'ALIŞ' : (sig === 'sell' ? 'SATIŞ' : 'KURULUM');
+  const scoreCls = a.score >= 75 ? 'high' : (a.score >= 60 ? 'mid' : 'low');
+  
+  let extra = '';
+  if (h && h.signal !== 'none' && h.signal === a.signal) {
+    extra = `<div style="font-size:11px;color:var(--cyan);margin-top:4px">✓ 1H timeframe teyit ediyor (skor ${h.score})</div>`;
+  } else if (h && h.signal !== 'none' && h.signal !== a.signal) {
+    extra = `<div style="font-size:11px;color:var(--yellow);margin-top:4px">⚠ 1H çelişki var — dikkat</div>`;
+  }
+  
+  return `
+    <div class="signal-card ${sig}" onclick="selectSymbol('${r.item.s}')">
+      <div class="sig-header">
+        <div>
+          <span class="sig-sym">${r.item.s.replace('.IS','')}</span>
+          <span style="color:var(--text2);font-size:12px;margin-left:6px">${r.item.n}</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <span class="score ${scoreCls}">${a.score}</span>
+          <span class="sig-badge ${sig}">${badge}</span>
+        </div>
+      </div>
+      <div class="reasons">${a.reasons.map(x => `<span>${x}</span>`).join('')}</div>
+      <div class="price-row">
+        <div>Fiyat: <strong>${a.price?.toFixed(2) || '—'}</strong></div>
+        ${a.sl ? `<div>SL: <strong style="color:var(--red)">${a.sl.toFixed(2)}</strong></div>` : ''}
+        ${a.tp ? `<div>TP: <strong style="color:var(--green)">${a.tp.toFixed(2)}</strong></div>` : ''}
+        <div>ATR: <strong>${a.atr?.toFixed(2) || '—'}</strong></div>
+      </div>
+      ${extra}
+    </div>
+  `;
+}
+
+// ===================== ANALIZ =====================
+async function loadAnaliz(sym) {
+  const content = document.getElementById('analizContent');
+  content.innerHTML = '<div class="loading"><div class="spinner"></div>Multi-timeframe analiz...</div>';
+  
+  const intervalMap = { '15m': '15m', '1h': '1h', '1d': '1d', '1wk': '1wk' };
+  const rangeMap = { '15m': '5d', '1h': '1mo', '1d': '1y', '1wk': '5y' };
+  
+  const interval = currentTF;
+  const data = await fetchChart(sym, intervalMap[interval], rangeMap[interval]);
+  if (!data || !data.bars.length) {
+    content.innerHTML = '<div class="empty">Veri alınamadı. Sembolü kontrol edin veya biraz bekleyip tekrar deneyin.</div>';
+    return;
+  }
+  
+  // Higher TF for bias
+  let higher = null;
+  if (interval === '15m' || interval === '1h') {
+    higher = await fetchChart(sym, '1d', '6mo');
+  } else if (interval === '1d') {
+    higher = await fetchChart(sym, '1wk', '2y');
+  }
+  
+  const analysis = analyzeBars(data.bars, higher ? higher.bars : null);
+  if (!analysis) {
+    content.innerHTML = '<div class="empty">Yeterli bar yok.</div>';
+    return;
+  }
+  
+  const a = analysis;
+  const sigText = a.signal === 'buy' ? 'ALIŞ SİNYALİ' : (a.signal === 'sell' ? 'SATIŞ SİNYALİ' : (a.signal === 'setup' ? 'GELİŞEN KURULUM' : 'SİNYAL YOK'));
+  const sigColor = a.signal === 'buy' ? 'var(--green)' : (a.signal === 'sell' ? 'var(--red)' : (a.signal === 'setup' ? 'var(--yellow)' : 'var(--text2)'));
+  
+  content.innerHTML = `
+    <div class="signal-card ${a.signal}" style="margin-bottom:14px">
+      <div class="sig-header">
+        <div class="sig-sym">${sym.replace('.IS','')} — ${interval}</div>
+        <div class="score ${a.score >= 72 ? 'high' : 'mid'}">${a.score}/100</div>
+      </div>
+      <div style="font-size:15px;font-weight:700;color:${sigColor};margin:6px 0">${sigText}</div>
+      <div class="reasons">${a.reasons.map(x => `<span>${x}</span>`).join('')}</div>
+      <div class="price-row" style="margin-top:12px">
+        <div>Fiyat: <strong>${a.price.toFixed(2)}</strong></div>
+        <div>RSI: <strong>${a.rsi?.toFixed(1) || '—'}</strong></div>
+        <div>ADX: <strong>${a.adx?.toFixed(1) || '—'}</strong></div>
+        <div>ATR: <strong>${a.atr?.toFixed(2) || '—'}</strong></div>
+      </div>
+      ${a.sl ? `<div class="price-row"><div>Önerilen SL: <strong style="color:var(--red)">${a.sl.toFixed(2)}</strong></div>
+        <div>Önerilen TP (1:2): <strong style="color:var(--green)">${a.tp.toFixed(2)}</strong></div></div>` : ''}
+    </div>
+    <div style="font-size:12px;color:var(--text2);line-height:1.6">
+      <strong>Profesyonel not:</strong> Bu analiz ${interval} timeframe + yüksek TF bias ile yapılmıştır.
+      Sadece skor ≥ 72 ve yön teyidi olan sinyaller "işlem açılabilir" kabul edilir.
+      HTF çelişkisi varsa skor otomatik düşürülür. Hacim teyidi ve ADX trend gücü kritik filtrelerdir.
+    </div>
+  `;
+}
+
+// ===================== BACKTEST + REPLAY =====================
+let btData = null;
+let btSignals = [];
+let replayIdx = 0;
+let replayPlaying = false;
+let replayTimer = null;
+
+async function runBacktest() {
+  const sym = document.getElementById('btSymbol').value;
+  const interval = document.getElementById('btInterval').value;
+  const range = document.getElementById('btRange').value;
+  
+  document.getElementById('btEmpty').style.display = 'none';
+  document.getElementById('replayBox').style.display = 'none';
+  document.getElementById('btStats').style.display = 'none';
+  document.getElementById('btStats').innerHTML = '<div class="loading"><div class="spinner"></div>Backtest çalışıyor...</div>';
+  document.getElementById('btStats').style.display = 'block';
+  
+  const data = await fetchChart(sym, interval, range);
+  if (!data || data.bars.length < 80) {
+    document.getElementById('btStats').innerHTML = '<div class="empty">Yeterli tarihsel veri alınamadı.</div>';
+    return;
+  }
+  
+  btData = data;
+  const bars = data.bars;
+  btSignals = [];
+  
+  // Walk forward: at each bar i (>=60), run analysis on bars[0..i]
+  // To keep it fast we sample every few bars for daily, every bar for higher
+  const step = interval === '1h' ? 4 : 1;
+  let equity = 10000;
+  let peak = 10000;
+  let maxDD = 0;
+  let wins = 0, losses = 0;
+  let totalRR = 0;
+  const trades = [];
+  
+  for (let i = 60; i < bars.length; i += step) {
+    const slice = bars.slice(0, i + 1);
+    const analysis = analyzeBars(slice);
+    if (!analysis || analysis.signal === 'none' || analysis.signal === 'setup') continue;
+    
+    // Simulate trade with fixed 1.5 ATR SL / 3 ATR TP (1:2 RR)
+    const entry = analysis.price;
+    const atrVal = analysis.atr;
+    const isBuy = analysis.signal === 'buy';
+    const sl = isBuy ? entry - atrVal * 1.5 : entry + atrVal * 1.5;
+    const tp = isBuy ? entry + atrVal * 3 : entry - atrVal * 3;
+    
+    // Look ahead for exit (max 20 bars)
+    let exitPrice = entry;
+    let exitReason = 'timeout';
+    let exitIdx = i;
+    for (let j = i + 1; j < Math.min(i + 21, bars.length); j++) {
+      const b = bars[j];
+      if (isBuy) {
+        if (b.l <= sl) { exitPrice = sl; exitReason = 'SL'; exitIdx = j; break; }
+        if (b.h >= tp) { exitPrice = tp; exitReason = 'TP'; exitIdx = j; break; }
+      } else {
+        if (b.h >= sl) { exitPrice = sl; exitReason = 'SL'; exitIdx = j; break; }
+        if (b.l <= tp) { exitPrice = tp; exitReason = 'TP'; exitIdx = j; break; }
+      }
+      exitPrice = b.c;
+      exitIdx = j;
+    }
+    
+    const pnlPct = isBuy ? (exitPrice - entry) / entry : (entry - exitPrice) / entry;
+    // commission + slippage approx 0.15%
+    const netPct = pnlPct - 0.0015;
+    const riskAmt = 100; // fixed risk unit
+    const pnl = netPct * (equity * 0.01); // 1% risk simulation simplified
+    equity += pnl;
+    peak = Math.max(peak, equity);
+    const dd = (peak - equity) / peak;
+    maxDD = Math.max(maxDD, dd);
+    
+    if (netPct > 0) wins++; else losses++;
+    totalRR += netPct / 0.015; // rough
+    
+    const sig = {
+      idx: i,
+      time: bars[i].t,
+      signal: analysis.signal,
+      score: analysis.score,
+      entry,
+      sl, tp,
+      exitPrice,
+      exitReason,
+      exitIdx,
+      pnlPct: netPct * 100,
+      reasons: analysis.reasons,
+      win: netPct > 0
+    };
+    btSignals.push(sig);
+    trades.push(sig);
+    
+    // skip forward a bit after signal to avoid overlap
+    i += Math.max(step, 3);
+  }
+  
+  const totalTrades = wins + losses;
+  const winrate = totalTrades ? (wins / totalTrades * 100) : 0;
+  const profitFactor = losses ? (wins / losses) : wins; // simplified
+  const finalRet = ((equity - 10000) / 10000) * 100;
+  
+  document.getElementById('btStats').innerHTML = `
+    <div class="stat-box"><div class="val" style="color:${finalRet>=0?'var(--green)':'var(--red)'}">${finalRet.toFixed(1)}%</div><div class="lbl">Getiri</div></div>
+    <div class="stat-box"><div class="val">${winrate.toFixed(1)}%</div><div class="lbl">Win Rate</div></div>
+    <div class="stat-box"><div class="val">${totalTrades}</div><div class="lbl">İşlem</div></div>
+    <div class="stat-box"><div class="val">${wins}W / ${losses}L</div><div class="lbl">W/L</div></div>
+    <div class="stat-box"><div class="val">${(maxDD*100).toFixed(1)}%</div><div class="lbl">Max DD</div></div>
+    <div class="stat-box"><div class="val">${profitFactor.toFixed(2)}</div><div class="lbl">PF (basit)</div></div>
+  `;
+  
+  // Setup replay
+  document.getElementById('replayBox').style.display = 'block';
+  document.getElementById('replaySlider').max = bars.length - 1;
+  document.getElementById('replaySlider').value = bars.length - 1;
+  replayIdx = bars.length - 1;
+  renderReplay();
+  renderSignalLog();
+}
+
+function renderSignalLog() {
+  const el = document.getElementById('signalLog');
+  if (!btSignals.length) {
+    el.innerHTML = '<div class="empty" style="padding:20px">Bu periyotta yüksek skorlu sinyal üretilmedi.</div>';
+    return;
+  }
+  el.innerHTML = btSignals.map(s => {
+    const d = new Date(s.time).toLocaleDateString('tr-TR');
+    return `<div class="sig-log-item ${s.win ? 'win' : 'loss'}">
+      <div>
+        <strong>${s.signal.toUpperCase()}</strong> ${d} • Skor ${s.score}
+        <div style="font-size:11px;color:var(--text2)">${s.reasons.slice(0,3).join(' • ')}</div>
+      </div>
+      <div style="text-align:right">
+        <div style="color:${s.win?'var(--green)':'var(--red)'}">${s.pnlPct >= 0 ? '+' : ''}${s.pnlPct.toFixed(2)}%</div>
+        <div style="font-size:11px">${s.exitReason}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function onReplaySlide(val) {
+  replayIdx = parseInt(val);
+  renderReplay();
+}
+
+function stepReplay(dir) {
+  replayIdx = Math.max(0, Math.min(btData.bars.length - 1, replayIdx + dir));
+  document.getElementById('replaySlider').value = replayIdx;
+  renderReplay();
+}
+
+function toggleReplay() {
+  if (replayPlaying) {
+    clearInterval(replayTimer);
+    replayPlaying = false;
+    document.getElementById('replayPlay').textContent = '▶ Play';
+  } else {
+    replayPlaying = true;
+    document.getElementById('replayPlay').textContent = '⏸ Pause';
+    replayTimer = setInterval(() => {
+      if (replayIdx >= btData.bars.length - 1) {
+        toggleReplay();
+        return;
+      }
+      replayIdx++;
+      document.getElementById('replaySlider').value = replayIdx;
+      renderReplay();
+    }, 350);
+  }
+}
+
+function renderReplay() {
+  if (!btData) return;
+  const bars = btData.bars;
+  const idx = replayIdx;
+  const visible = bars.slice(Math.max(0, idx - 80), idx + 1);
+  const canvas = document.getElementById('replayCanvas');
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = canvas.clientWidth * dpr;
+  canvas.height = canvas.clientHeight * dpr;
+  ctx.scale(dpr, dpr);
+  const w = canvas.clientWidth;
+  const h = canvas.clientHeight;
+  ctx.clearRect(0, 0, w, h);
+  
+  if (visible.length < 2) return;
+  
+  const prices = visible.flatMap(b => [b.h, b.l]);
+  const minP = Math.min(...prices);
+  const maxP = Math.max(...prices);
+  const range = maxP - minP || 1;
+  const pad = 10;
+  
+  // Draw candles
+  const candleW = Math.max(2, (w - 20) / visible.length - 1);
+  visible.forEach((b, i) => {
+    const x = 10 + i * ((w - 20) / visible.length);
+    const yH = pad + (1 - (b.h - minP) / range) * (h - 2 * pad);
+    const yL = pad + (1 - (b.l - minP) / range) * (h - 2 * pad);
+    const yO = pad + (1 - (b.o - minP) / range) * (h - 2 * pad);
+    const yC = pad + (1 - (b.c - minP) / range) * (h - 2 * pad);
+    const up = b.c >= b.o;
+    ctx.strokeStyle = up ? '#10b981' : '#ef4444';
+    ctx.fillStyle = up ? '#10b981' : '#ef4444';
+    ctx.beginPath();
+    ctx.moveTo(x + candleW / 2, yH);
+    ctx.lineTo(x + candleW / 2, yL);
+    ctx.stroke();
+    const bodyTop = Math.min(yO, yC);
+    const bodyH = Math.max(1, Math.abs(yC - yO));
+    ctx.fillRect(x, bodyTop, candleW, bodyH);
+  });
+  
+  // Mark signals that are visible
+  btSignals.forEach(s => {
+    if (s.idx > idx) return;
+    const visIdx = s.idx - (idx - visible.length + 1);
+    if (visIdx < 0 || visIdx >= visible.length) return;
+    const x = 10 + visIdx * ((w - 20) / visible.length) + candleW / 2;
+    const y = pad + (1 - (s.entry - minP) / range) * (h - 2 * pad);
+    ctx.beginPath();
+    ctx.arc(x, y, 5, 0, Math.PI * 2);
+    ctx.fillStyle = s.signal === 'buy' ? '#10b981' : '#ef4444';
+    ctx.fill();
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+  });
+  
+  const dateStr = new Date(bars[idx].t).toLocaleString('tr-TR');
+  const price = bars[idx].c.toFixed(2);
+  document.getElementById('replayInfo').innerHTML = `
+    <strong>${dateStr}</strong> • Fiyat: ${price} • 
+    Görünen sinyal: ${btSignals.filter(s => s.idx <= idx).length} / ${btSignals.length}
+  `;
+}
+
+// ===================== RISK =====================
+function calcPosition() {
+  const capital = parseFloat(document.getElementById('riskCapital').value) || 0;
+  const riskPct = parseFloat(document.getElementById('riskPct').value) || 1;
+  const entry = parseFloat(document.getElementById('riskEntry').value) || 0;
+  const sl = parseFloat(document.getElementById('riskSL').value) || 0;
+  if (!capital || !entry || !sl || entry === sl) {
+    document.getElementById('posResult').textContent = 'Geçerli değerler girin.';
+    return;
+  }
+  const riskAmt = capital * (riskPct / 100);
+  const riskPerShare = Math.abs(entry - sl);
+  const shares = Math.floor(riskAmt / riskPerShare);
+  const positionValue = shares * entry;
+  const rr = riskPerShare > 0 ? (Math.abs(entry - (entry + (entry - sl) * 2)) / riskPerShare) : 0; // example 1:2
+  
+  document.getElementById('posResult').innerHTML = `
+    <strong>Pozisyon Büyüklüğü:</strong> ${shares} adet<br>
+    <strong>Pozisyon Değeri:</strong> ${positionValue.toLocaleString('tr-TR', {maximumFractionDigits:0})}<br>
+    <strong>Risk Tutarı:</strong> ${riskAmt.toLocaleString('tr-TR', {maximumFractionDigits:0})}<br>
+    <strong>Hisse başı risk:</strong> ${riskPerShare.toFixed(2)}
+  `;
+}
+
+async function calcATRStops() {
+  const sym = document.getElementById('atrSymbol').value.trim().toUpperCase();
+  const rr = parseFloat(document.getElementById('rrRatio').value) || 2;
+  if (!sym) return;
+  let full = sym;
+  if (!sym.includes('.') && !SP500_LIQUID.find(x => x.s === sym)) full = sym + '.IS';
+  
+  document.getElementById('atrResult').innerHTML = 'Hesaplanıyor...';
+  const data = await fetchChart(full, '1d', '3mo');
+  if (!data || !data.bars.length) {
+    document.getElementById('atrResult').textContent = 'Veri alınamadı.';
+    return;
+  }
+  const analysis = analyzeBars(data.bars);
+  if (!analysis) {
+    document.getElementById('atrResult').textContent = 'Analiz başarısız.';
+    return;
+  }
+  const atrVal = analysis.atr;
+  const price = analysis.price;
+  const slDist = atrVal * 1.5;
+  const tpDist = atrVal * 1.5 * rr;
+  
+  document.getElementById('atrResult').innerHTML = `
+    <strong>${full}</strong> Fiyat: ${price.toFixed(2)} • ATR(14): ${atrVal.toFixed(2)}<br><br>
+    <strong style="color:var(--green)">ALIŞ için:</strong><br>
+    SL: ${(price - slDist).toFixed(2)} (−${slDist.toFixed(2)})<br>
+    TP: ${(price + tpDist).toFixed(2)} (+${tpDist.toFixed(2)}) • RR 1:${rr}<br><br>
+    <strong style="color:var(--red)">SATIŞ için:</strong><br>
+    SL: ${(price + slDist).toFixed(2)} (+${slDist.toFixed(2)})<br>
+    TP: ${(price - tpDist).toFixed(2)} (−${tpDist.toFixed(2)}) • RR 1:${rr}
+  `;
+}
+
+// ===================== INIT =====================
+function populateBtSymbols() {
+  const sel = document.getElementById('btSymbol');
+  const all = [...watchlist, ...BIST30.slice(0,10), ...SP500_LIQUID.slice(0,8)];
+  const seen = new Set();
+  sel.innerHTML = all.filter(x => { if (seen.has(x.s)) return false; seen.add(x.s); return true; })
+    .map(x => `<option value="${x.s}">${x.s.replace('.IS','')} — ${x.n}</option>`).join('');
+}
+
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    document.getElementById('panel-' + tab.dataset.tab).classList.add('active');
+    if (tab.dataset.tab === 'radar') runRadar();
+    if (tab.dataset.tab === 'backtest') populateBtSymbols();
+  });
+});
+
+document.querySelectorAll('.filter-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentFilter = btn.dataset.filter;
+    runRadar();
+  });
+});
+
+document.querySelectorAll('.tf-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tf-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentTF = btn.dataset.tf;
+    if (selectedSymbol) loadAnaliz(selectedSymbol);
+  });
+});
+
+// Boot
+renderWatchlist();
+populateBtSymbols();
+updateMarketStatus();
+updateWatchQuotes();
+runRadar();
+
+// Refresh quotes every 2 min
+setInterval(() => { updateMarketStatus(); updateWatchQuotes(); }, 120000);
+</script>
+</body>
+</html>
